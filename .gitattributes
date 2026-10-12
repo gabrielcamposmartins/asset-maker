@@ -1,0 +1,4 @@
+# Sem normalização de fim de linha: o repositório guarda os bytes como estão no disco.
+# A maioria dos arquivos é CRLF e js/assistant/lc.js é LF — converter no clone/checkout
+# geraria diffs falsos e mudaria arquivos que não foram editados.
+* -text

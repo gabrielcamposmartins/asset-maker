@@ -1,0 +1,19 @@
+# Dados do usuário — NUNCA versionar.
+# O estado.db é o espelho SQLite dos workflows, sessões e biblioteca (centenas de MB
+# de imagens e áudio em base64); os backups e os resgates são despejos do mesmo conteúdo.
+dados/
+backups/
+resgate-*.json
+
+# Ambiente e artefatos do servidor local
+local-server/.venv/
+local-server/logs/
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Sistema operacional
+Thumbs.db
+desktop.ini
+.DS_Store

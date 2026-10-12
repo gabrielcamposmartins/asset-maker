@@ -1,0 +1,6 @@
+# PyTorch com CUDA é instalado antes, pelo setup.ps1, a partir do índice oficial do PyTorch
+# (o PyPI só tem a versão CPU para Windows).
+qwen-tts==0.1.1
+fastapi>=0.115
+uvicorn>=0.30
+huggingface_hub[hf_xet]>=0.34

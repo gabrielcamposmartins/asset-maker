@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Asset Maker — Workflows de IA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+  <!-- ?v= fura o cache do navegador: atualize ao mudar CSS/JS (o http.server não envia Cache-Control) -->
+  <link rel="stylesheet" href="styles.css?v=2026-09-30-1" />
+  <script type="module">
+    import { Client } from "https://cdn.jsdelivr.net/npm/@gradio/client/dist/index.min.js";
+    window.GradioClient = Client;
+  </script>
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js"></script>
+</head>
+<body>
+  <!-- ===== Barra superior (flutuante) ===== -->
+  <header id="topbar">
+    <div class="tb-group">
+      <div class="brand">
+        <span class="brand-logo">⬢</span>
+        <span class="brand-name">Asset<span class="brand-accent">Maker</span></span>
+      </div>
+      <span class="sep"></span>
+      <div class="dropdown">
+        <button class="btn btn-ghost" id="btn-examples" title="Workflows, templates e saves">
+          <svg class="ic" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.6"/><rect x="13" y="4" width="7" height="7" rx="1.6"/><rect x="4" y="13" width="7" height="7" rx="1.6"/><rect x="13" y="13" width="7" height="7" rx="1.6"/></svg>
+          <span id="wf-name">Workflows</span>
+          <span id="wf-dirty" class="wf-dirty" hidden>●</span>
+          <svg class="ic ic-chev" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5"/></svg>
+        </button>
+        <div class="dropdown-menu" id="examples-menu"></div>
+      </div>
+    </div>
+
+    <div class="tb-group tb-center">
+      <button id="btn-run" class="btn btn-primary" title="Executar workflow completo">
+        <svg class="ic ic-fill" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z"/></svg>Executar
+      </button>
+      <button id="btn-stop" class="btn btn-ghost" title="Interromper execução" disabled>
+        <svg class="ic ic-fill" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="2"/></svg>Parar
+      </button>
+      <button id="btn-save-workflow" class="btn btn-ghost" title="Salvar o workflow (Ctrl+S) — em exemplos e no rascunho, pede um nome e cria um workflow seu">
+        <svg class="ic" viewBox="0 0 24 24"><path d="M5 5a1 1 0 0 1 1-1h10l3 3v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1z"/><path d="M8 4v5h7V4"/><path d="M8 20v-6h8v6"/></svg>Salvar
+      </button>
+    </div>
+
+    <div class="tb-group tb-right">
+      <button id="btn-export" class="btn btn-icon" title="Exportar workflow (JSON, com resultados)">
+        <svg class="ic" viewBox="0 0 24 24"><path d="M12 4v11"/><path d="M7.5 10.5 12 15l4.5-4.5"/><path d="M5 19.5h14"/></svg>
+      </button>
+      <button id="btn-import" class="btn btn-icon" title="Importar workflow (JSON)">
+        <svg class="ic" viewBox="0 0 24 24"><path d="M12 20V9"/><path d="M7.5 13.5 12 9l4.5 4.5"/><path d="M5 4.5h14"/></svg>
+      </button>
+      <input type="file" id="import-file" accept=".json" hidden />
+      <span class="sep"></span>
+      <div class="dropdown">
+        <button class="btn btn-icon" id="btn-appearance" title="Aparência">
+          <svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16z" fill="currentColor" stroke="none"/></svg>
+        </button>
+        <div class="dropdown-menu align-right appearance-menu" id="appearance-menu">
+          <div class="ap-title">Cores</div>
+          <div class="ap-swatches" id="ap-swatches"></div>
+          <label class="ap-free">Cor livre (destaque)
+            <input type="color" id="ap-custom" value="#ff7a1a" />
+          </label>
+          <div class="ap-title">Cantos</div>
+          <div class="ap-styles" id="ap-styles">
+            <button data-style="arredondado">Arredondado</button>
+            <button data-style="reto">Reto</button>
+            <button data-style="pilula">Pílula</button>
+          </div>
+        </div>
+      </div>
+      <button id="btn-assistant" class="btn btn-icon" title="Assistente de IA — cria e edita workflows, prompts e schemas">
+        <svg class="ic" viewBox="0 0 24 24"><path d="M11 3.5l1.9 5.1 5.1 1.9-5.1 1.9L11 17.5l-1.9-5.1L4 10.5l5.1-1.9z"/><path d="M18 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/></svg>
+      </button>
+      <button id="btn-prompts" class="btn btn-icon" title="Prompts, templates, schemas e vozes — use {{nome}} nos campos de texto">
+        <svg class="ic" viewBox="0 0 24 24"><path d="M5 6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-6l-4 4v-4H7a2 2 0 0 1-2-2z"/></svg>
+      </button>
+      <button id="btn-history" class="btn btn-icon" title="Histórico de imagens, áudios e modelos 3D">
+        <svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4.2l2.8 1.8"/></svg>
+      </button>
+      <button id="btn-keys" class="btn btn-keys" title="Chaves de API e servidor local">
+        <svg class="ic" viewBox="0 0 24 24"><circle cx="8" cy="12" r="3.2"/><path d="M11.2 12H20"/><path d="M17 12v3"/><path d="M20 12v2.2"/></svg>Chaves<span class="srv-dot" id="srv-dot" title="Servidor local: verde = ligado"></span>
+      </button>
+    </div>
+  </header>
+
+  <div id="main">
+    <!-- ===== Canvas (tela cheia, atrás dos painéis de vidro) ===== -->
+    <div id="canvas">
+      <svg id="edges"></svg>
+      <div id="world"></div>
+      <div id="canvas-help">
+        <span class="help-badge">?</span>
+        <span class="help-text">Arraste o fundo para mover · Scroll: zoom · Arraste de uma saída até uma entrada para conectar · Duplo clique numa conexão remove · Botão direito: copiar, colar e duplicar · Arraste com o botão direito (ou Ctrl/Shift + esquerdo) para selecionar uma área · Delete apaga o que estiver selecionado · Grupo: arraste pelo título, duplo clique renomeia</span>
+      </div>
+      <div id="zoom-indicator">100%</div>
+      <div id="marquee" hidden></div>
+    </div>
+
+    <!-- ===== Painel lateral esquerdo: paleta de nodes ===== -->
+    <aside id="sidebar">
+      <div class="sidebar-head">
+        <div class="sidebar-title">Nodes</div>
+        <label class="search">
+          <svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
+          <input type="search" id="palette-search" placeholder="Buscar node…" autocomplete="off" />
+        </label>
+      </div>
+      <div id="palette"></div>
+      <div class="sidebar-footer">
+        <div class="legend"><span class="dot dot-text"></span>Texto</div>
+        <div class="legend"><span class="dot dot-image"></span>Imagem</div>
+        <div class="legend"><span class="dot dot-model3d"></span>3D</div>
+        <div class="legend"><span class="dot dot-audio"></span>Áudio</div>
+        <div class="legend"><span class="dot dot-voice"></span>Voz</div>
+      </div>
+    </aside>
+
+    <!-- ===== Painel direito: prompts, templates, schemas e vozes ===== -->
+    <aside id="prompts-panel" hidden>
+      <div class="pp-header">
+        <span>Biblioteca</span>
+        <button id="pp-close" title="Fechar painel">✕</button>
+      </div>
+      <div class="pp-hint">Escreva <code>{{nome}}</code> em qualquer campo de texto de um node para interpolar o prompt na execução. Ex.: <code>{{cartinhas_v2}}</code></div>
+      <div class="pp-section-header">
+        <span>Prompts</span>
+        <div class="pp-section-actions">
+          <button class="pp-add" data-lib-folder="prompt" title="Nova pasta de prompts">📁</button>
+          <button id="pp-new" class="pp-add" title="Novo prompt">＋</button>
+        </div>
+      </div>
+      <div id="pp-list" class="pp-scroll"></div>
+      <div class="pp-section-header">
+        <span>Prompts de agentes</span>
+        <div class="pp-section-actions">
+          <button class="pp-add" data-lib-folder="agent" title="Nova pasta de prompts de agentes">📁</button>
+          <button id="agent-new" class="pp-add" title="Novo prompt de agente (persona/instrução de sistema)">＋</button>
+        </div>
+      </div>
+      <div id="agent-list-panel" class="pp-scroll"></div>
+      <div class="pp-section-header">
+        <span>Templates de saída</span>
+        <div class="pp-section-actions">
+          <button class="pp-add" data-lib-folder="template" title="Nova pasta de templates">📁</button>
+          <button id="tpl-new" class="pp-add" title="Novo template de saída">＋</button>
+        </div>
+      </div>
+      <div id="tpl-list-panel" class="pp-scroll"></div>
+      <div class="pp-section-header">
+        <span>Schemas de saída (JSON)</span>
+        <div class="pp-section-actions">
+          <button class="pp-add" data-lib-folder="schema" title="Nova pasta de schemas">📁</button>
+          <button id="schema-new" class="pp-add" title="Novo schema de saída (JSON Schema)">＋</button>
+        </div>
+      </div>
+      <div id="schema-list-panel" class="pp-scroll"></div>
+      <div class="pp-section-header">
+        <span>Vozes locais (Qwen3-TTS)</span>
+        <button id="voices-refresh" class="pp-add" title="Atualizar a lista do servidor local">⟳</button>
+      </div>
+      <div id="voices-list-panel" class="pp-scroll"></div>
+    </aside>
+
+    <!-- ===== Painel direito: assistente de IA (js/assistant/) ===== -->
+    <aside id="assistant-panel" hidden>
+      <div id="as-resize" class="as-resize" title="Arraste para mudar a largura · duplo clique volta ao padrão"></div>
+      <div class="as-header">
+        <span class="as-title">✦ Assistente</span>
+        <button id="as-model" class="as-model" title="Provedor e modelo — clique para configurar"></button>
+        <span class="spacer"></span>
+        <button id="as-new" title="Nova sessão">⟲</button>
+        <button id="as-close" title="Fechar painel">✕</button>
+      </div>
+      <div id="as-settings" class="as-settings" hidden>
+        <label>Provedor <select id="as-provider"></select></label>
+        <label id="as-model-wrap">Modelo <select id="as-model-select"></select></label>
+        <label id="as-effort-wrap">Esforço
+          <select id="as-effort">
+            <option value="">padrão</option><option value="low">low</option><option value="medium">medium</option>
+            <option value="high">high</option><option value="xhigh">xhigh</option><option value="max">max</option>
+          </select>
+        </label>
+        <label>Máx. chamadas por pedido <input type="number" id="as-max-calls" min="3" max="60" step="1" /></label>
+      </div>
+      <div class="as-sessionbar">
+        <button id="as-session-btn" class="as-session-btn" title="Sessões salvas deste workflow">
+          <span>🗂</span><span id="as-session-title">Nova sessão</span><span id="as-session-count" class="as-session-count" hidden></span><span class="as-session-chev">▾</span>
+        </button>
+      </div>
+      <div id="as-sessions" class="as-sessions" hidden></div>
+      <div id="as-banner" class="as-banner" hidden></div>
+      <div id="as-log" class="as-log"></div>
+      <div id="as-status" class="as-status" hidden></div>
+      <div id="as-context" class="as-context"></div>
+      <div class="as-composer">
+        <textarea id="as-input" rows="2" placeholder="Peça algo… (Enter envia, Shift+Enter quebra linha)"></textarea>
+        <button id="as-send" class="btn btn-primary btn-small">Enviar</button>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ===== Barra de status ===== -->
+  <!-- Aviso de armazenamento sem garantia: o navegador pode apagar os dados quando o disco encher -->
+  <div id="storage-warning" hidden>
+    <span id="storage-warning-text"></span>
+    <button type="button" id="storage-warning-backup">⇩ Exportar backup agora</button>
+    <button type="button" id="storage-warning-close" title="Esconder até a próxima vez que abrir o editor">✕</button>
+  </div>
+
+  <footer id="statusbar"><span id="status-text">Pronto.</span></footer>
+
+  <!-- ===== Menu de contexto do canvas (botão direito) ===== -->
+  <div class="dropdown-menu ctx-menu" id="ctx-menu" hidden></div>
+
+  <!-- ===== Modal: chaves de API ===== -->
+  <div class="modal-backdrop" id="keys-modal" hidden>
+    <div class="modal">
+      <div class="modal-header">
+        <span>Chaves de API</span>
+        <button class="modal-close" data-close="keys-modal">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-note">As chaves ficam salvas apenas no seu navegador (localStorage) e são enviadas diretamente para cada provedor.</p>
+        <label>OpenAI (texto e imagem)
+          <input type="password" id="key-openai" placeholder="sk-..." autocomplete="off" />
+        </label>
+        <label>Anthropic / Claude (API)
+          <input type="password" id="key-anthropic" placeholder="sk-ant-..." autocomplete="off" />
+        </label>
+        <label>Google Gemini
+          <input type="password" id="key-gemini" placeholder="AIza..." autocomplete="off" />
+        </label>
+        <label>Hugging Face (Inference + Spaces/TRELLIS)
+          <input type="password" id="key-hf" placeholder="hf_..." autocomplete="off" />
+        </label>
+        <div class="modal-section-title">Listas de modelos</div>
+        <div class="local-test-row models-row">
+          <button class="btn btn-ghost btn-small" id="btn-refresh-models" type="button" title="Consulta as APIs com as chaves acima e acrescenta aos nodes os modelos que ainda não estão nas listas">⟳ Atualizar modelos</button>
+          <span id="models-status"></span>
+        </div>
+        <p class="srv-hint">Também atualiza sozinho uma vez por dia. Modelos que não estão na lista padrão aparecem em “Mais modelos (da API)”, e os lançados recentemente vêm com 🆕.</p>
+        <div class="modal-section-title">Servidor local (Qwen3-TTS, Claude Code)</div>
+        <div class="srv-card">
+          <div class="srv-state"><span class="srv-dot" id="srv-state-dot"></span><span id="srv-state-text">Verificando…</span></div>
+          <div class="srv-actions">
+            <button class="btn btn-small btn-primary" id="btn-srv-start" type="button" disabled>Ligar</button>
+            <button class="btn btn-small btn-ghost" id="btn-srv-stop" type="button" disabled>Desligar</button>
+            <button class="btn btn-small btn-ghost" id="btn-srv-log" type="button" disabled>Log</button>
+          </div>
+        </div>
+        <div class="srv-hint" id="srv-hint"></div>
+        <pre class="srv-log" id="srv-log" hidden></pre>
+        <label>URL do servidor local — vazio = padrão
+          <input type="text" id="key-local-server" placeholder="http://127.0.0.1:8765" autocomplete="off" />
+        </label>
+        <div class="local-test-row">
+          <button class="btn btn-ghost btn-small" id="btn-test-local" type="button">Testar conexão</button>
+          <span id="local-test-status"></span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" id="btn-save-keys">Salvar chaves</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Modal: pedir um nome (workflows, saves e pastas) ===== -->
+  <div class="modal-backdrop" id="ask-modal" hidden>
+    <div class="modal">
+      <div class="modal-header">
+        <span id="ask-title">Nome</span>
+        <button class="modal-close" data-close="ask-modal">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-note" id="ask-note" hidden></p>
+        <label><span id="ask-label">Nome</span>
+          <input type="text" id="ask-input" autocomplete="off" />
+        </label>
+        <div id="ask-status" class="schema-status"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="ask-cancel" type="button">Cancelar</button>
+        <button class="btn btn-primary" id="ask-ok" type="button">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Modal: confirmar exclusão ===== -->
+  <div class="modal-backdrop" id="confirm-modal" hidden>
+    <div class="modal modal-confirm">
+      <div class="modal-header">
+        <span id="confirm-title">Confirmar</span>
+        <button class="modal-close" data-close="confirm-modal">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="confirm-text" id="confirm-text"></p>
+        <ul class="confirm-list" id="confirm-list" hidden></ul>
+        <p class="modal-note" id="confirm-note" hidden></p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="confirm-cancel" type="button">Cancelar</button>
+        <button class="btn btn-danger" id="confirm-ok" type="button">Excluir</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- pastas sugeridas nos formulários da Biblioteca (preenchido ao abrir cada um) -->
+  <datalist id="lib-folder-options"></datalist>
+
+  <!-- ===== Modal: criar/editar prompt salvo ===== -->
+  <div class="modal-backdrop" id="prompt-form-modal" hidden>
+    <div class="modal">
+      <div class="modal-header">
+        <span id="prompt-form-title">Novo prompt</span>
+        <button class="modal-close" data-close="prompt-form-modal">✕</button>
+      </div>
+      <div class="modal-body">
+        <label>Nome (letras, números, _ e -)
+          <input type="text" id="pp-name" placeholder="ex.: cartinhas_v2" autocomplete="off" />
+        </label>
+        <label>Pasta — vazio = sem pasta; um nome novo cria a pasta; use / para subpastas (ex.: pokeru/characters)
+          <input type="text" id="pp-folder" list="lib-folder-options" placeholder="Sem pasta" autocomplete="off" />
+        </label>
+        <label>Texto do prompt
+          <textarea id="pp-text" rows="10" placeholder="ex.: Carta de baralho fantasy, moldura ornamentada dourada, ilustração central detalhada, fundo estrelado…"></textarea>
+        </label>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="pp-cancel">Cancelar</button>
+        <button class="btn btn-primary" id="pp-save">Adicionar prompt</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Modal: criar/editar template de saída ===== -->
+  <div class="modal-backdrop" id="template-form-modal" hidden>
+    <div class="modal">
+      <div class="modal-header">
+        <span id="template-form-title">Novo template de saída</span>
+        <button class="modal-close" data-close="template-form-modal">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-note">Um template de saída é uma instrução de formatação anexada ao final do prompt enviado ao modelo. Aparece no campo “Formato de saída” dos nodes de texto.</p>
+        <label>Nome do template
+          <input type="text" id="tpl-name" placeholder="ex.: Ficha de asset de jogo" autocomplete="off" />
+        </label>
+        <label>Pasta — vazio = sem pasta; um nome novo cria a pasta; use / para subpastas (ex.: pokeru/characters)
+          <input type="text" id="tpl-folder" list="lib-folder-options" placeholder="Sem pasta" autocomplete="off" />
+        </label>
+        <label>Instrução de formatação (anexada ao prompt)
+          <textarea id="tpl-instruction" rows="8" placeholder='ex.: Responda APENAS com um JSON no formato {"nome": string, "descricao": string, "tags": string[]}, sem texto fora do JSON.'></textarea>
+        </label>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="btn-tpl-cancel">Cancelar</button>
+        <button class="btn btn-primary" id="btn-tpl-save">Adicionar template</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Modal: criar/editar schema de saída (JSON Schema) ===== -->
+  <div class="modal-backdrop" id="schema-form-modal" hidden>
+    <div class="modal modal-wide">
+      <div class="modal-header">
+        <span id="schema-form-title">Novo schema de saída</span>
+        <button class="modal-close" data-close="schema-form-modal">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-note">Um schema de saída é um <b>JSON Schema</b> passado ao <code>claude -p --json-schema</code>: o Claude Code devolve um JSON validado nesse formato. Use um objeto na raiz; se ele tiver uma única propriedade do tipo array, ela sai também na porta “itens (lista)” do node.</p>
+        <label>Nome
+          <input type="text" id="schema-name" placeholder="ex.: Ficha de NPC" autocomplete="off" />
+        </label>
+        <label>Pasta — vazio = sem pasta; um nome novo cria a pasta; use / para subpastas (ex.: pokeru/characters)
+          <input type="text" id="schema-folder" list="lib-folder-options" placeholder="Sem pasta" autocomplete="off" />
+        </label>
+        <label>JSON Schema
+          <textarea id="schema-json" rows="14" spellcheck="false"></textarea>
+        </label>
+        <div id="schema-status" class="schema-status"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="btn-schema-format" type="button">{ } Formatar</button>
+        <span class="spacer"></span>
+        <button class="btn btn-ghost" id="btn-schema-cancel" type="button">Cancelar</button>
+        <button class="btn btn-primary" id="btn-schema-save" type="button">Adicionar schema</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Modal: visualizador ampliado ===== -->
+  <div class="modal-backdrop" id="viewer-modal" hidden>
+    <div class="modal modal-viewer">
+      <div class="modal-header">
+        <span id="viewer-title">Visualizador</span>
+        <div class="modal-header-actions">
+          <button id="viewer-regen" class="btn btn-ghost btn-small" title="Refazer este áudio com uma seed nova (Shift+clique para escolher a seed)" hidden>↻ Refazer</button>
+          <button id="viewer-save-voice" class="btn btn-ghost btn-small" title="Criar um perfil de voz a partir deste áudio" hidden>Salvar como voz</button>
+          <a id="viewer-download" class="btn btn-ghost btn-small" download target="_blank" rel="noopener">Baixar</a>
+          <button class="modal-close" data-close="viewer-modal">✕</button>
+        </div>
+      </div>
+      <div class="modal-body viewer-stage-wrap">
+        <div class="viewer-stage">
+          <button id="viewer-prev" class="viewer-arrow" title="Anterior (←)">‹</button>
+          <div id="viewer-body"></div>
+          <button id="viewer-next" class="viewer-arrow" title="Próximo (→)">›</button>
+        </div>
+        <div id="viewer-caption" hidden>
+          <span id="viewer-caption-text"></span>
+          <button id="viewer-caption-copy" title="Copiar prompt">📋</button>
+        </div>
+        <div id="viewer-chat" hidden>
+          <div id="viewer-chat-log"></div>
+          <div class="chat-row">
+            <select id="chat-model" title="Modelo usado na edição">
+              <option value="gpt-image-2">gpt-image-2</option>
+              <option value="gpt-image-1.5">gpt-image-1.5</option>
+              <option value="gpt-image-1">gpt-image-1</option>
+            </select>
+            <input type="text" id="chat-input" placeholder="Descreva a edição da imagem… (Enter envia)" autocomplete="off" />
+            <button class="btn btn-primary btn-small" id="chat-send">Editar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Modal: salvar áudio gerado como voz ===== -->
+  <div class="modal-backdrop" id="savevoice-modal" hidden>
+    <div class="modal">
+      <div class="modal-header">
+        <span>Salvar como voz</span>
+        <button class="modal-close" data-close="savevoice-modal">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-note">Cria um perfil de voz a partir deste áudio (clonagem). Depois é só escolher a voz em “Voz salva” no node Fala, em qualquer workflow — o timbre fica fixo.</p>
+        <audio id="sv-audio" class="sv-audio" controls></audio>
+        <label>Nome da voz
+          <input type="text" id="sv-name" placeholder="ex.: narradora_calma" autocomplete="off" />
+        </label>
+        <label>Transcrição exata do que é falado no áudio
+          <textarea id="sv-text" rows="4"></textarea>
+        </label>
+        <div class="sv-row">
+          <label>Idioma
+            <select id="sv-lang"></select>
+          </label>
+          <label>Seed do perfil
+            <input type="number" id="sv-seed" min="0" step="1" />
+          </label>
+        </div>
+        <label class="check"><input type="checkbox" id="sv-overwrite" /> Substituir se já existir uma voz com esse nome</label>
+        <div id="sv-status" class="schema-status"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="btn-sv-cancel" type="button">Cancelar</button>
+        <button class="btn btn-primary" id="btn-sv-save" type="button">Salvar voz</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Modal: histórico ===== -->
+  <div class="modal-backdrop" id="history-modal" hidden>
+    <div class="modal modal-viewer">
+      <div class="modal-header">
+        <span>Histórico de gerações</span>
+        <div class="modal-header-actions">
+          <button class="btn btn-ghost btn-small" id="btn-history-clear">Limpar tudo</button>
+          <button class="modal-close" data-close="history-modal">✕</button>
+        </div>
+      </div>
+      <div class="modal-body"><div id="history-grid"></div></div>
+    </div>
+  </div>
+
+  <script src="js/nodes.js?v=2026-09-30-1"></script>
+  <script src="js/app.js?v=2026-09-30-1"></script>
+  <!-- assistente de IA: módulo carregado depois dos scripts clássicos; o LangChain só baixa ao abrir o painel -->
+  <script type="module" src="js/assistant/panel.js?v=2026-09-30-1"></script>
+</body>
+</html>
